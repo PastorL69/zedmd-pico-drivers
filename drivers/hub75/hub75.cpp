@@ -602,10 +602,10 @@ void Hub75::start(irq_handler_t handler) {
 
         float data_clkdiv = panel_data_clkdiv(width);
         pio_sm_set_clkdiv(pio, sm_data, data_clkdiv);
-        pio_sm_set_clkdiv(pio, sm_row, data_clkdiv);
+        pio_sm_set_clkdiv(pio, sm_row, 2.0f);
         if (split_controls) {
             pio_sm_set_clkdiv(pio, sm_data_b, data_clkdiv);
-            pio_sm_set_clkdiv(pio, sm_row_b, data_clkdiv);
+            pio_sm_set_clkdiv(pio, sm_row_b, 2.0f);
         }
 
         dma_channel = dma_claim_unused_channel(true);
