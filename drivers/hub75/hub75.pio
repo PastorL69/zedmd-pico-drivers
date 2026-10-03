@@ -88,7 +88,7 @@ pulse_loop:
 
 .wrap_target
     out null, 5 [2]    side 0x2 ; Deassert OEn, discard row select bits
-    out x, y    [5]    side 0x3 ; Pulse LATCH, get OEn pulse width
+    mov x, y    [5]    side 0x3 ; Pulse LATCH, get OEn pulse width
 wait_loop:
     jmp x-- wait_loop  side 0x2 ; Wait for row to latch
     out x, 27          side 0x2 ; Get OEn pulse width
