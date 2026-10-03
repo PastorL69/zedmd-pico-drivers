@@ -565,7 +565,7 @@ void Hub75::start(irq_handler_t handler) {
             if (uses_dp3246_scan_path(*this)) {
                 hub75_row_noaddr_dp3246_program_init(pio, sm_row, row_prog_offs, pin_stb);
             } else {
-                hub75_row_noaddr_program_init(pio, sm_row, row_prog_offs, pin_stb);
+                hub75_row_noaddr_program_init(pio, sm_row, row_prog_offs, pin_stb, latch_cycles);
             }
         } else if (line_decoder == LINE_DECODER_TYPE595) {
             if (uses_dp3246_scan_path(*this)) {
@@ -587,7 +587,7 @@ void Hub75::start(irq_handler_t handler) {
                 if (uses_dp3246_scan_path(*this)) {
                     hub75_row_noaddr_dp3246_program_init(pio, sm_row_b, row_prog_offs, pin_stb2);
                 } else {
-                    hub75_row_noaddr_program_init(pio, sm_row_b, row_prog_offs, pin_stb2);
+                    hub75_row_noaddr_program_init(pio, sm_row_b, row_prog_offs, pin_stb2, latch_cycles);
                 }
             } else if (line_decoder == LINE_DECODER_TYPE595) {
                 if (uses_dp3246_scan_path(*this)) {
