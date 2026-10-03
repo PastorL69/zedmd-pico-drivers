@@ -43,7 +43,7 @@ float panel_data_clkdiv(uint width) {
         target_hz *= 1.5f;
     }
     else if (width <= 256) {
-        target_hz *= 2.0f;
+        target_hz *= 1.5f;
     }
 
     float clock_scale = (float)system_clock_hz() / target_hz;
