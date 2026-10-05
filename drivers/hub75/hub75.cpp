@@ -47,7 +47,7 @@ float panel_data_clkdiv(uint width) {
     }
 
     float clock_scale = (float)system_clock_hz() / target_hz;
-    return std::max(1.0f, clock_scale);
+    return std::max(1.0f, 6.0f);
 }
 
 uint32_t latch_cycles_for_system_clock(uint width) {
@@ -601,11 +601,11 @@ void Hub75::start(irq_handler_t handler) {
         }
 
         float data_clkdiv = panel_data_clkdiv(width);
-        pio_sm_set_clkdiv(pio, sm_data, 2.0f);
-        pio_sm_set_clkdiv(pio, sm_row, data_clkdiv);
+        pio_sm_set_clkdiv(pio, sm_data, 6.0f);
+        pio_sm_set_clkdiv(pio, sm_row, 6.0f);
         if (split_controls) {
-            pio_sm_set_clkdiv(pio, sm_data_b, 2.0f);
-            pio_sm_set_clkdiv(pio, sm_row_b, data_clkdiv);
+            pio_sm_set_clkdiv(pio, sm_data_b, 6.0f);
+            pio_sm_set_clkdiv(pio, sm_row_b, 6.0f);
         }
 
         dma_channel = dma_claim_unused_channel(true);
