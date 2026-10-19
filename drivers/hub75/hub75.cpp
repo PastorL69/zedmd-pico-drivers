@@ -521,7 +521,7 @@ void Hub75::init_shiftreg_rows() {
     gpio_put(pin_row_c, 0);
 }
 
-void __not_in_flash_func(Hub75::step_shiftreg_row)(uint row) const {
+void Hub75::step_shiftreg_row(uint row) const {
     // Seed the shift register when wrapping back to row 0, otherwise shift in 0s.
     // shiftreg_delay is cached in start() to keep clock queries out of the ISR.
     gpio_put(pin_row_b, 1);
@@ -866,7 +866,7 @@ void Hub75::clear() {
 }
 
 
-void __not_in_flash_func(Hub75::dma_complete)() {
+void Hub75::dma_complete() {
     if (!split_controls && dma_channel_get_irq0_status(dma_channel)) {
         dma_channel_acknowledge_irq0(dma_channel);
 
