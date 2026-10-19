@@ -194,11 +194,6 @@ class Hub75 {
 
     uint brightness = 6;
 
-    // Set by flip(), cleared by the refresh ISR once the buffers are swapped.
-    volatile bool swap_pending = false;
-    // After a flip the draw buffer holds an older frame until it is fully
-    // redrawn or synced from the visible frame. Only touched outside the ISR.
-    bool draw_stale = false;
     // Setup/hold delay for GPIO-stepped row decoders, cached by start().
     uint32_t shiftreg_delay = 8;
 
@@ -267,15 +262,6 @@ class Hub75 {
     void draw_rgb888(uint x, uint y, uint w, uint h, const uint8_t *src);
     void fill_rect(uint x, uint y, uint w, uint h, uint8_t r, uint8_t g, uint8_t b);
 
-    // Declares that the caller redraws every pixel before the next flip() or
-    // render(), so a stale draw buffer needs no sync.
-    void begin_frame();
-
-    // Swap draw and render buffers at the next refresh boundary instead of
-    // copying. Avoids tearing; the next draw waits for the swap.
-    void flip();
-    void wait_for_flip();
-
     void start(irq_handler_t handler);
     void stop(irq_handler_t handler);
     void dma_complete();
@@ -289,12 +275,6 @@ class Hub75 {
     // SM5266P/SM5368PF panels use a GPIO-stepped serial row decoder.
     void init_shiftreg_rows();
     void step_shiftreg_row(uint row) const;
-    // Makes the draw buffer valid for partial updates after a flip().
-    inline void prepare_partial_draw() {
-        if (__builtin_expect(draw_stale, 0)) sync_draw_buffer();
-    }
-    void sync_draw_buffer();
-    void swap_buffers_from_isr();
 #ifndef NO_PICO_GRAPHICS
     void update(PicoGraphics *graphics);
 #endif

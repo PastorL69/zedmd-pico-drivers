@@ -4,7 +4,6 @@
 #include <initializer_list>
 
 #include "hardware/clocks.h"
-#include "hardware/sync.h"
 
 #include "hub75.hpp"
 
@@ -228,13 +227,11 @@ int inline __attribute__((always_inline)) Hub75::buffer_offset(uint x, uint y) c
 
 void Hub75::set_color(uint x, uint y, Pixel c) {
     if(x >= width || y >= height) return;
-    prepare_partial_draw();
     draw_back_buffer[buffer_offset(x, y)] = c;
 }
 
 void Hub75::set_pixel(uint x, uint y, uint8_t r, uint8_t g, uint8_t b) {
     if(x >= width || y >= height) return;
-    prepare_partial_draw();
     draw_back_buffer[buffer_offset(x, y)] = rgb888_to_pixel(r, g, b);
 }
 
@@ -242,11 +239,6 @@ void Hub75::draw_rgb565(uint x, uint y, uint w, uint h, const uint8_t *src) {
     if (x >= width || y >= height) return;
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
-    if (x == 0 && y == 0 && cw == width && ch == height) {
-        begin_frame();
-    } else {
-        prepare_partial_draw();
-    }
     for (uint row = 0; row < ch; row++) {
         write_rgb565_row(&draw_back_buffer[buffer_offset(x, y + row)], src + row * w * 2, cw);
     }
@@ -256,11 +248,6 @@ void Hub75::draw_rgb888(uint x, uint y, uint w, uint h, const uint8_t *src) {
     if (x >= width || y >= height) return;
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
-    if (x == 0 && y == 0 && cw == width && ch == height) {
-        begin_frame();
-    } else {
-        prepare_partial_draw();
-    }
     for (uint row = 0; row < ch; row++) {
         Pixel *dst = &draw_back_buffer[buffer_offset(x, y + row)];
         const uint8_t *s = src + row * w * 3;
@@ -274,11 +261,6 @@ void Hub75::fill_rect(uint x, uint y, uint w, uint h, uint8_t r, uint8_t g, uint
     if (x >= width || y >= height) return;
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
-    if (x == 0 && y == 0 && cw == width && ch == height) {
-        begin_frame();
-    } else {
-        prepare_partial_draw();
-    }
     const Pixel c = rgb888_to_pixel(r, g, b);
     for (uint row = 0; row < ch; row++) {
         Pixel *dst = &draw_back_buffer[buffer_offset(x, y + row)];
@@ -286,51 +268,6 @@ void Hub75::fill_rect(uint x, uint y, uint w, uint h, uint8_t r, uint8_t g, uint
             dst[2 * i] = c;
         }
     }
-}
-
-void Hub75::begin_frame() {
-    wait_for_flip();
-    draw_stale = false;
-}
-
-void Hub75::flip() {
-    // Without a second buffer, or with nothing drawn since the last flip,
-    // there is nothing to swap.
-    if (back_buffer2 == nullptr || draw_stale) return;
-    wait_for_flip();
-    __dmb();
-    swap_pending = true;
-    draw_stale = true;
-}
-
-void Hub75::wait_for_flip() {
-    if (!swap_pending) return;
-    const uint32_t start = time_us_32();
-    while (swap_pending) {
-        // A full refresh takes a few ms. If the refresh is not running, nobody
-        // reads the buffers and it is safe to swap here.
-        if (dma_channel < 0 || time_us_32() - start > 100000) {
-            const uint32_t status = save_and_disable_interrupts();
-            if (swap_pending) swap_buffers_from_isr();
-            restore_interrupts(status);
-            break;
-        }
-        tight_loop_contents();
-    }
-    __dmb();
-}
-
-void Hub75::sync_draw_buffer() {
-    wait_for_flip();
-    memcpy(draw_back_buffer, render_back_buffer, width * height * sizeof(Pixel));
-    draw_stale = false;
-}
-
-void __not_in_flash_func(Hub75::swap_buffers_from_isr)() {
-    Pixel *tmp = render_back_buffer;
-    render_back_buffer = draw_back_buffer;
-    draw_back_buffer = tmp;
-    swap_pending = false;
 }
 
 void Hub75::FM6126A_write_register(uint16_t value, uint8_t position) {
@@ -908,9 +845,7 @@ void Hub75::stop(irq_handler_t handler) {
 }
 
 void Hub75::render() {
-    // After flip() without further drawing the pending swap already shows the
-    // latest frame, and the draw buffer holds older content.
-    if (back_buffer2 != nullptr && !draw_stale) {
+    if (back_buffer2 != nullptr) {
         memcpy(render_back_buffer, draw_back_buffer, width * height * sizeof(Pixel));
     }
 }
@@ -923,8 +858,11 @@ Hub75::~Hub75() {
 }
 
 void Hub75::clear() {
-    begin_frame();
-    std::fill_n(draw_back_buffer, width * height, rgb888_to_pixel(0, 0, 0));
+    for(auto x = 0u; x < width; x++) {
+        for(auto y = 0u; y < height; y++) {
+            set_pixel(x, y, 0, 0, 0);
+        }
+    }
 }
 
 
@@ -962,8 +900,6 @@ void __not_in_flash_func(Hub75::dma_complete)() {
             bit++;
             if (bit == BIT_DEPTH) {
                 bit = 0;
-                // Full refresh boundary: show a frame passed to flip().
-                if (swap_pending) swap_buffers_from_isr();
             }
             if (uses_dp3246_scan_path(*this)) {
                 hub75_data_rgb888_invclk_set_shift(pio, sm_data, data_prog_offs, bit);
@@ -1030,7 +966,6 @@ void __not_in_flash_func(Hub75::dma_complete)() {
                     bit++;
                     if (bit == BIT_DEPTH) {
                         bit = 0;
-                        if (swap_pending) swap_buffers_from_isr();
                     }
                     if (uses_dp3246_scan_path(*this)) {
                         hub75_data_rgb888_invclk_set_shift(pio, sm_data, data_prog_offs, bit);
@@ -1094,7 +1029,6 @@ uint __not_in_flash_func(Hub75::end_of_row_dummy_pixels)() const {
 
 void Hub75::copy_to_back_buffer(void *data, size_t len, int start_x, int start_y, int g_width, int g_height) {
     uint8_t *p = (uint8_t *)data;
-    prepare_partial_draw();
 
     if(g_width == int32_t(width / 2) && g_height == int32_t(height * 2)) {
         for(int y = start_y; y < g_height; y++) {
