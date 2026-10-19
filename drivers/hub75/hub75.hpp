@@ -194,9 +194,6 @@ class Hub75 {
 
     uint brightness = 6;
 
-    // Setup/hold delay for GPIO-stepped row decoders, cached by start().
-    uint32_t shiftreg_delay = 8;
-
     // Top half of display - 16 rows on a 32x32 panel
     unsigned int pin_r0 = HUB75_R0;
     unsigned int pin_g0 = HUB75_G0;
