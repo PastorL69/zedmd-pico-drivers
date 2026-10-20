@@ -83,7 +83,7 @@
 // Setup/hold time in ns for each edge of the GPIO-stepped serial row decoders
 // (SM5266P/SM5368P)
 #ifndef HUB75_SHIFTREG_DELAY_NS
-#define HUB75_SHIFTREG_DELAY_NS 10
+#define HUB75_SHIFTREG_DELAY_NS 5
 #endif
 
 namespace pimoroni {
