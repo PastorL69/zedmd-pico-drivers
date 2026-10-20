@@ -66,7 +66,8 @@ uint32_t system_clock_hz() {
 }
 
 uint32_t shiftreg_delay_cycles() {
-    return std::max<uint32_t>(8u, (uint32_t)(((uint64_t)system_clock_hz() * 8u + 124999999u) / 125000000u));
+    uint64_t cycles = ((uint64_t)system_clock_hz() * HUB75_SHIFTREG_DELAY_NS + 999999999u) / 1000000000u;
+    return std::max<uint32_t>(8u, (uint32_t)cycles);
 }
 
 float panel_data_clkdiv(uint width) {
