@@ -84,7 +84,7 @@
 // (SM5266P/SM5368P). Too short makes the row clock skip or double-step, which
 // shows up as a waving/rolling image.
 #ifndef HUB75_SHIFTREG_DELAY_NS
-#define HUB75_SHIFTREG_DELAY_NS 125
+#define HUB75_SHIFTREG_DELAY_NS 400
 #endif
 
 namespace pimoroni {
