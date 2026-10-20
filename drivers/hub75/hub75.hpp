@@ -81,10 +81,9 @@
 #endif
 
 // Setup/hold time in ns for each edge of the GPIO-stepped serial row decoders
-// (SM5266P/SM5368P). Too short makes the row clock skip or double-step, which
-// shows up as a waving/rolling image.
+// (SM5266P/SM5368P)
 #ifndef HUB75_SHIFTREG_DELAY_NS
-#define HUB75_SHIFTREG_DELAY_NS 15
+#define HUB75_SHIFTREG_DELAY_NS 10
 #endif
 
 namespace pimoroni {
