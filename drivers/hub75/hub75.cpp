@@ -66,7 +66,8 @@ uint32_t system_clock_hz() {
 }
 
 uint32_t shiftreg_delay_cycles() {
-    return std::max<uint32_t>(8u, (uint32_t)(((uint64_t)system_clock_hz() * 8u + 124999999u) / 125000000u));
+    uint64_t cycles = ((uint64_t)system_clock_hz() * HUB75_SHIFTREG_DELAY_NS + 999999999u) / 1000000000u;
+    return std::max<uint32_t>(1u, (uint32_t)cycles);
 }
 
 float panel_data_clkdiv(uint width) {
@@ -589,11 +590,11 @@ void __not_in_flash_func(Hub75::step_shiftreg_row)(uint row) const {
     // shiftreg_delay is cached in start() to keep clock queries out of the ISR.
     gpio_put(pin_row_b, 1);
     gpio_put(pin_row_c, row == 0);
-    busy_wait_at_least_cycles(shiftreg_delay_cycles());
+    busy_wait_at_least_cycles(shiftreg_delay);
     gpio_put(pin_row_a, 1);
-    busy_wait_at_least_cycles(shiftreg_delay_cycles());
+    busy_wait_at_least_cycles(shiftreg_delay);
     gpio_put(pin_row_a, 0);
-    busy_wait_at_least_cycles(shiftreg_delay_cycles());
+    busy_wait_at_least_cycles(shiftreg_delay);
     gpio_put(pin_row_b, 0);
     if (row == 0) {
         gpio_put(pin_row_c, 0);

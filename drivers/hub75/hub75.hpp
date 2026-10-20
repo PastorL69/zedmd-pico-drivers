@@ -80,6 +80,13 @@
 #define HUB75_LATCH_BLANKING 0
 #endif
 
+// Setup/hold time in ns for each edge of the GPIO-stepped serial row decoders
+// (SM5266P/SM5368P). Too short makes the row clock skip or double-step, which
+// shows up as a waving/rolling image.
+#ifndef HUB75_SHIFTREG_DELAY_NS
+#define HUB75_SHIFTREG_DELAY_NS 5
+#endif
+
 namespace pimoroni {
 const uint DATA_BASE_PIN = HUB75_R0;
 const uint DATA_N_PINS = 6;
