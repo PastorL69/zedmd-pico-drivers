@@ -82,8 +82,8 @@
 
 // Setup/hold time for each edge of the GPIO-stepped serial row decoders
 // (SM5266P/SM5368P), in cycles at a 266MHz clk_sys. Scaled to the actual clk_sys.
-// Too short makes the row clock skip or double-step, which shows up as a
-// waving/rolling image.
+// Too low makes the row clock skip or double-step, which shows up as a
+// waving/rolling image on a camera.
 #ifndef HUB75_SHIFTREG_DELAY_CYCLES
 #define HUB75_SHIFTREG_DELAY_CYCLES 340
 #endif

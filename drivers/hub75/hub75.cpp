@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <cstring>
 #include <algorithm>
 #include <cmath>
@@ -6,15 +5,6 @@
 
 #include "hardware/clocks.h"
 #include "hardware/sync.h"
-#include "hardware/structs/systick.h"
-
-// DEBUG: Serial for the shift register delay measurements.
-#ifdef ARDUINO
-#include <Arduino.h>
-#define HUB75_DEBUG_PRINTF Serial.printf
-#else
-#define HUB75_DEBUG_PRINTF printf
-#endif
 
 #include "hub75.hpp"
 
@@ -605,54 +595,21 @@ void Hub75::init_shiftreg_rows() {
     gpio_put(pin_row_a, 0);
     gpio_put(pin_row_b, 0);
     gpio_put(pin_row_c, 0);
-
-    // DEBUG: SysTick counts down at clk_sys, used to measure the shift register delays.
-    if (!(systick_hw->csr & 1u)) {
-        systick_hw->rvr = 0x00ffffffu;
-        systick_hw->cvr = 0;
-        systick_hw->csr = 0x5u; // ENABLE | CLKSOURCE=processor
-    }
 }
 
 void __not_in_flash_func(Hub75::step_shiftreg_row)(uint row) const {
-    // DEBUG: cycle counts around each busy wait, printed at most once per second.
-    static uint32_t debug_last_print_us = 0;
-    uint32_t t0, t1, d0, d1, d2;
-
     // Seed the shift register when wrapping back to row 0, otherwise shift in 0s.
     // shiftreg_delay is cached in start() to keep clock queries out of the ISR.
     gpio_put(pin_row_b, 1);
     gpio_put(pin_row_c, row == 0);
-    t0 = systick_hw->cvr;
     shiftreg_wait(shiftreg_delay);
-    t1 = systick_hw->cvr;
-    d0 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_a, 1);
-    t0 = systick_hw->cvr;
     shiftreg_wait(shiftreg_delay);
-    t1 = systick_hw->cvr;
-    d1 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_a, 0);
-    t0 = systick_hw->cvr;
     shiftreg_wait(shiftreg_delay);
-    t1 = systick_hw->cvr;
-    d2 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_b, 0);
     if (row == 0) {
         gpio_put(pin_row_c, 0);
-    }
-
-    // DEBUG: empty measurement (two back-to-back SysTick reads) to subtract as overhead.
-    t0 = systick_hw->cvr;
-    t1 = systick_hw->cvr;
-    uint32_t overhead = (t0 - t1) & 0x00ffffffu;
-
-    uint32_t now_us = time_us_32();
-    if (now_us - debug_last_print_us >= 1000000u) {
-        debug_last_print_us = now_us;
-        HUB75_DEBUG_PRINTF("shiftreg delay: requested %lu, measured %lu / %lu / %lu cycles (overhead %lu), clk_sys %lu Hz\n",
-          (unsigned long)shiftreg_delay, (unsigned long)d0, (unsigned long)d1, (unsigned long)d2,
-          (unsigned long)overhead, (unsigned long)system_clock_hz());
     }
 }
 
