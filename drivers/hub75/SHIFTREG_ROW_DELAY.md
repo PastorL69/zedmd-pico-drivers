@@ -38,9 +38,12 @@ What we learned:
 ## Current method
 
 - `HUB75_SHIFTREG_DELAY_CYCLES` (default 170) sets the hold time per edge
-  **in cycles at 266 MHz**, about 0.64 µs. `shiftreg_delay_cycles()` scales it
-  to the actual `clk_sys`, so the time stays the same at any clock speed.
-  The minimum is 8 cycles.
+  **in `clk_sys` cycles for a 256 wide panel at 250 MHz**, about 0.68 µs.
+  That setup runs the panel data clock at 175 MHz (`panel_data_clkdiv()` =
+  250/175). `shiftreg_delay_cycles()` scales the value by the actual
+  `panel_data_clkdiv()`, so the delay stays a fixed number of panel data clocks
+  (about 119). A lower clkdiv gives a shorter delay, a higher one a longer
+  delay. The minimum is 8 cycles.
 - `start()` caches the value in `shiftreg_delay`, which keeps clock queries
   out of the ISR.
 - All three edges call `shiftreg_wait()`, a single RAM function that is never
@@ -56,7 +59,7 @@ Override the delay at build time, for example in `platformio.ini`:
 build_flags = -D HUB75_SHIFTREG_DELAY_CYCLES=200
 ```
 
-The real minimum is somewhere between about 20 and 340 cycles at 266 MHz.
+The value is given for a 256 wide panel at 250 MHz and is scaled from there.
 Lowering it shortens the time each row is blanked. If the image starts to roll,
-raise it again. 170 cycles (about 0.64 µs per edge) gave the best result, so it
+raise it again. 170 cycles (about 0.68 µs per edge) gave the best result, so it
 is the default.

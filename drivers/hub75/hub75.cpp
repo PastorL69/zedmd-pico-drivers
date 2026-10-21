@@ -65,11 +65,6 @@ uint32_t system_clock_hz() {
     return clock_get_hz(clk_sys);
 }
 
-uint32_t shiftreg_delay_cycles() {
-    uint64_t cycles = ((uint64_t)system_clock_hz() * HUB75_SHIFTREG_DELAY_CYCLES + 265999999u) / 266000000u;
-    return std::max<uint32_t>(8u, (uint32_t)cycles);
-}
-
 // Single out-of-line copy of the wait loop so every row decoder edge gets the
 // same timing. Inlined busy_wait_at_least_cycles() copies land on different
 // alignments, and a misaligned loop takes 4 instead of 3 cycles per iteration.
@@ -89,10 +84,10 @@ float panel_data_clkdiv(uint width) {
         target_hz *= 1.0f;
     }
     else if (width <= 192) {
-        target_hz *= 1.4f;
+        target_hz *= 1.2f;
     }
     else if (width <= 256) {
-        target_hz *= 1.6f;
+        target_hz *= 1.4f;
     }
 
     float clock_scale = (float)system_clock_hz() / target_hz;
@@ -102,6 +97,15 @@ float panel_data_clkdiv(uint width) {
 uint32_t latch_cycles_for_system_clock(uint width) {
     float cycles = (system_clock_hz() / 4000000.0f) / panel_data_clkdiv(width);
     return std::max<uint32_t>(1u, static_cast<uint32_t>(cycles));
+}
+
+// HUB75_SHIFTREG_DELAY_CYCLES is tuned for a 256 wide panel at a 250MHz clk_sys,
+// where panel_data_clkdiv() is 250/175. Scaling by the actual clkdiv keeps the
+// delay a fixed number of panel data clocks.
+uint32_t shiftreg_delay_cycles(uint width) {
+    const float reference_clkdiv = 250000000.0f / (125000000.0f * 1.4f);
+    float cycles = HUB75_SHIFTREG_DELAY_CYCLES * panel_data_clkdiv(width) / reference_clkdiv;
+    return std::max<uint32_t>(8u, static_cast<uint32_t>(cycles + 0.5f));
 }
 
 uint range_min(std::initializer_list<uint> pins) {
@@ -630,7 +634,7 @@ void Hub75::start(irq_handler_t handler) {
         }
 
         uint latch_cycles = latch_cycles_for_system_clock(width);
-        shiftreg_delay = shiftreg_delay_cycles();
+        shiftreg_delay = shiftreg_delay_cycles(width);
 
         if (uses_gpio_serial_decoder(*this)) {
             // GPIO-stepped serial row decoders keep row selection outside the row PIO program.
