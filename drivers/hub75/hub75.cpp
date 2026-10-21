@@ -80,6 +80,18 @@ uint32_t shiftreg_delay_cycles() {
     return std::max<uint32_t>(8u, (uint32_t)cycles);
 }
 
+// Single out-of-line copy of the wait loop so every row decoder edge gets the
+// same timing. Inlined busy_wait_at_least_cycles() copies land on different
+// alignments, and a misaligned loop takes 4 instead of 3 cycles per iteration.
+void __attribute__((noinline)) __not_in_flash_func(shiftreg_wait)(uint32_t cycles) {
+    pico_default_asm_volatile(
+        ".balign 4\n"
+        "1: subs %0, #3\n"
+        "bcs 1b\n"
+        : "+l" (cycles) : : "cc", "memory"
+    );
+}
+
 float panel_data_clkdiv(uint width) {
     float target_hz = 125000000.0f;
 
@@ -612,17 +624,17 @@ void __not_in_flash_func(Hub75::step_shiftreg_row)(uint row) const {
     gpio_put(pin_row_b, 1);
     gpio_put(pin_row_c, row == 0);
     t0 = systick_hw->cvr;
-    busy_wait_at_least_cycles(shiftreg_delay);
+    shiftreg_wait(shiftreg_delay);
     t1 = systick_hw->cvr;
     d0 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_a, 1);
     t0 = systick_hw->cvr;
-    busy_wait_at_least_cycles(shiftreg_delay);
+    shiftreg_wait(shiftreg_delay);
     t1 = systick_hw->cvr;
     d1 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_a, 0);
     t0 = systick_hw->cvr;
-    busy_wait_at_least_cycles(shiftreg_delay);
+    shiftreg_wait(shiftreg_delay);
     t1 = systick_hw->cvr;
     d2 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_b, 0);
