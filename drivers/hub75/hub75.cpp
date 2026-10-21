@@ -8,6 +8,14 @@
 #include "hardware/sync.h"
 #include "hardware/structs/systick.h"
 
+// DEBUG: Serial for the shift register delay measurements.
+#ifdef ARDUINO
+#include <Arduino.h>
+#define HUB75_DEBUG_PRINTF Serial.printf
+#else
+#define HUB75_DEBUG_PRINTF printf
+#endif
+
 #include "hub75.hpp"
 
 namespace pimoroni {
@@ -628,7 +636,7 @@ void __not_in_flash_func(Hub75::step_shiftreg_row)(uint row) const {
     uint32_t now_us = time_us_32();
     if (now_us - debug_last_print_us >= 1000000u) {
         debug_last_print_us = now_us;
-        Serial.printf("shiftreg delay: requested %lu, measured %lu / %lu / %lu cycles (overhead %lu), clk_sys %lu Hz\n",
+        HUB75_DEBUG_PRINTF("shiftreg delay: requested %lu, measured %lu / %lu / %lu cycles (overhead %lu), clk_sys %lu Hz\n",
           (unsigned long)shiftreg_delay_cycles(), (unsigned long)d0, (unsigned long)d1, (unsigned long)d2,
           (unsigned long)overhead, (unsigned long)system_clock_hz());
     }
