@@ -607,20 +607,21 @@ void __not_in_flash_func(Hub75::step_shiftreg_row)(uint row) const {
     uint32_t t0, t1, d0, d1, d2;
 
     // Seed the shift register when wrapping back to row 0, otherwise shift in 0s.
+    // shiftreg_delay is cached in start() to keep clock queries out of the ISR.
     gpio_put(pin_row_b, 1);
     gpio_put(pin_row_c, row == 0);
     t0 = systick_hw->cvr;
-    busy_wait_at_least_cycles(shiftreg_delay_cycles());
+    busy_wait_at_least_cycles(shiftreg_delay);
     t1 = systick_hw->cvr;
     d0 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_a, 1);
     t0 = systick_hw->cvr;
-    busy_wait_at_least_cycles(shiftreg_delay_cycles());
+    busy_wait_at_least_cycles(shiftreg_delay);
     t1 = systick_hw->cvr;
     d1 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_a, 0);
     t0 = systick_hw->cvr;
-    busy_wait_at_least_cycles(shiftreg_delay_cycles());
+    busy_wait_at_least_cycles(shiftreg_delay);
     t1 = systick_hw->cvr;
     d2 = (t0 - t1) & 0x00ffffffu;
     gpio_put(pin_row_b, 0);
@@ -637,7 +638,7 @@ void __not_in_flash_func(Hub75::step_shiftreg_row)(uint row) const {
     if (now_us - debug_last_print_us >= 1000000u) {
         debug_last_print_us = now_us;
         HUB75_DEBUG_PRINTF("shiftreg delay: requested %lu, measured %lu / %lu / %lu cycles (overhead %lu), clk_sys %lu Hz\n",
-          (unsigned long)shiftreg_delay_cycles(), (unsigned long)d0, (unsigned long)d1, (unsigned long)d2,
+          (unsigned long)shiftreg_delay, (unsigned long)d0, (unsigned long)d1, (unsigned long)d2,
           (unsigned long)overhead, (unsigned long)system_clock_hz());
     }
 }
@@ -659,6 +660,7 @@ void Hub75::start(irq_handler_t handler) {
         }
 
         uint latch_cycles = latch_cycles_for_system_clock(width);
+        shiftreg_delay = shiftreg_delay_cycles();
 
         if (uses_gpio_serial_decoder(*this)) {
             // GPIO-stepped serial row decoders keep row selection outside the row PIO program.
