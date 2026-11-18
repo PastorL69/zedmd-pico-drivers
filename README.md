@@ -106,7 +106,7 @@ Empty planes at a `266 MHz` system clock with the default of `60 ns`, for bright
 | `192x64` (XL) | `187.5 MHz` | 4 3 2 2 2 1 1 1 1 1 |
 | `256x64` (HD) | `250 MHz` | 4 3 3 2 2 2 1 1 1 1 |
 
-The value can also be changed at runtime through `Hub75::min_oe_ns`. Changes of `min_oe_ns` and `brightness` apply to the next draw call; pixels drawn before keep their old rounding.
+The value can also be changed at runtime through `Hub75::min_oe_ns`. Changes of `min_oe_ns` and `brightness` apply from the next `flip()`, `render()`, `draw_rgb565()`, `draw_rgb888()`, `fill_rect()` or `copy_to_back_buffer()` call. `set_pixel()` does not check, so its per-pixel cost is unchanged. Pixels drawn before keep their old rounding.
 
 Example:
 

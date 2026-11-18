@@ -220,8 +220,8 @@ class Hub75 {
     // Setup/hold delay for GPIO-stepped row decoders, cached by start().
     uint32_t shiftreg_delay = 8;
 
-    // See HUB75_MIN_OE_NS. Changes of this or of brightness apply to the
-    // next draw call.
+    // See HUB75_MIN_OE_NS. Changes of this or of brightness apply from the
+    // next flip(), render() or bulk draw call; set_pixel() does not check.
     uint min_oe_ns = HUB75_MIN_OE_NS;
     // Low bit planes left empty by the gamma LUT, built for lut_brightness and
     // lut_min_oe_ns.

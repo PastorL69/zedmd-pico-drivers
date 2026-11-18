@@ -270,7 +270,6 @@ void Hub75::set_color(uint x, uint y, Pixel c) {
 
 void Hub75::set_pixel(uint x, uint y, uint8_t r, uint8_t g, uint8_t b) {
     if(x >= width || y >= height) return;
-    sync_dark_planes();
     prepare_partial_draw();
     draw_back_buffer[buffer_offset(x, y)] = rgb888_to_pixel(r, g, b);
 }
@@ -334,6 +333,9 @@ void Hub75::begin_frame() {
 }
 
 void Hub75::flip() {
+    // Once per frame: frames drawn with set_pixel() pick up a brightness
+    // change from the next frame on.
+    sync_dark_planes();
     // Without a second buffer, or with nothing drawn since the last flip,
     // there is nothing to swap.
     if (back_buffer2 == nullptr || draw_stale) return;
@@ -950,6 +952,7 @@ void Hub75::stop(irq_handler_t handler) {
 }
 
 void Hub75::render() {
+    sync_dark_planes();
     // After flip() without further drawing the pending swap already shows the
     // latest frame, and the draw buffer holds older content.
     if (back_buffer2 != nullptr && !draw_stale) {
