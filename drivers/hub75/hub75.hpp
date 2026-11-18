@@ -95,7 +95,7 @@
 // colours so that bit planes with shorter pulses stay empty. This costs the
 // darkest shades at low brightness. 0 keeps every plane. See also min_oe_ns.
 #ifndef HUB75_MIN_OE_NS
-#define HUB75_MIN_OE_NS 40
+#define HUB75_MIN_OE_NS 55
 #endif
 
 namespace pimoroni {
