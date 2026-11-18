@@ -12,7 +12,7 @@
 ;
 ; Each FIFO record consists of:
 ; - 5-bit row select (LSBs)
-; - Pulse width - 1 (27 MSBs), 0 means no pulse
+; - Pulse width - 1 (27 MSBs)
 ;
 ; Repeatedly select a row, pulse LATCH, and generate a pulse of a certain
 ; width on OEn.
@@ -20,13 +20,11 @@
 .side_set 2
 
 .wrap_target
-row_start:
     out pins, 5 [1]    side 0x2 ; Deassert OEn, output row select
     mov x, y    [3]    side 0x3 ; Pulse LATCH
 wait_loop:
     jmp x-- wait_loop  side 0x2 ; Wait for row to latch
     out x, 27          side 0x2 ; Get OEn pulse width
-    jmp !x row_start   side 0x2 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop:
     jmp x-- pulse_loop side 0x0 ; Assert OEn for x+1 cycles
 .wrap
@@ -39,7 +37,7 @@ pulse_loop:
 ;
 ; Each FIFO record consists of:
 ; - 5-bit row select (LSBs)
-; - Pulse width - 1 (27 MSBs), 0 means no pulse
+; - Pulse width - 1 (27 MSBs)
 ;
 ; Repeatedly select a row, pulse LATCH, and generate a pulse of a certain
 ; width on OEn.
@@ -47,13 +45,11 @@ pulse_loop:
 .side_set 2
 
 .wrap_target
-row_start:
     out pins, 5 [1]    side 0x3 ; Deassert OEn, output row select
     mov x, y    [3]    side 0x2 ; Pulse LATCH
 wait_loop:
     jmp x-- wait_loop  side 0x3 ; Wait for row to latch
     out x, 27          side 0x3 ; Get OEn pulse width
-    jmp !x row_start   side 0x3 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop:
     jmp x-- pulse_loop side 0x1 ; Assert OEn for x+1 cycles
 .wrap
@@ -65,12 +61,10 @@ pulse_loop:
 .side_set 2
 
 .wrap_target
-row_start:
     out pins, 5 [7]    side 0x2 ; Deassert OEn, output row select
     out x, 27   [7]    side 0x3 ; Pulse LATCH, get OEn pulse width
     nop         [7]    side 0x3 ; Extend LATCH (2/3)
     nop         [7]    side 0x3 ; Extend LATCH (3/3)
-    jmp !x row_start   side 0x3 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop:
     jmp x-- pulse_loop side 0x0 ; Assert OEn for x+1 cycles
 .wrap
@@ -80,12 +74,10 @@ pulse_loop:
 .side_set 2
 
 .wrap_target
-row_start:
     out pins, 5 [7]    side 0x3 ; Deassert OEn, output row select
     out x, 27   [7]    side 0x2 ; Pulse LATCH, get OEn pulse width
     nop         [7]    side 0x2 ; Extend LATCH (2/3)
     nop         [7]    side 0x2 ; Extend LATCH (3/3)
-    jmp !x row_start   side 0x2 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop:
     jmp x-- pulse_loop side 0x1 ; Assert OEn for x+1 cycles
 .wrap
@@ -95,10 +87,8 @@ pulse_loop:
 .side_set 2
 
 .wrap_target
-row_start:
     out null, 5 [7]    side 0x2 ; Deassert OEn, discard row select bits
     out x, 27   [7]    side 0x3 ; Pulse LATCH, get OEn pulse width
-    jmp !x row_start   side 0x3 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop:
     jmp x-- pulse_loop side 0x0 ; Assert OEn for x+1 cycles
 .wrap
@@ -108,10 +98,8 @@ pulse_loop:
 .side_set 2
 
 .wrap_target
-row_start:
     out null, 5 [7]    side 0x3 ; Deassert OEn, discard row select bits
     out x, 27   [7]    side 0x2 ; Pulse LATCH, get OEn pulse width
-    jmp !x row_start   side 0x2 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop:
     jmp x-- pulse_loop side 0x1 ; Assert OEn for x+1 cycles
 .wrap
@@ -121,12 +109,10 @@ pulse_loop:
 .side_set 2
 
 .wrap_target
-row_start:
     out null, 5 [7]    side 0x2 ; Deassert OEn, discard row select bits
     out x, 27   [7]    side 0x3 ; Pulse LATCH, get OEn pulse width
     nop         [7]    side 0x3 ; Extend LATCH (2/3)
     nop         [7]    side 0x3 ; Extend LATCH (3/3)
-    jmp !x row_start   side 0x3 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop:
     jmp x-- pulse_loop side 0x0 ; Assert OEn for x+1 cycles
 .wrap
@@ -136,12 +122,10 @@ pulse_loop:
 .side_set 2
 
 .wrap_target
-row_start:
     out null, 5 [7]    side 0x3 ; Deassert OEn, discard row select bits
     out x, 27   [7]    side 0x2 ; Pulse LATCH, get OEn pulse width
     nop         [7]    side 0x2 ; Extend LATCH (2/3)
     nop         [7]    side 0x2 ; Extend LATCH (3/3)
-    jmp !x row_start   side 0x2 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop:
     jmp x-- pulse_loop side 0x1 ; Assert OEn for x+1 cycles
 .wrap
@@ -152,16 +136,14 @@ pulse_loop:
 ; Each FIFO record consists of:
 ; - 3-bit row shift state with CLK low
 ; - 3-bit row shift state with CLK high
-; - Pulse width - 1 (26 MSBs), 0 means no pulse
+; - Pulse width - 1 (26 MSBs)
 
 .side_set 2
 
 .wrap_target
-row_start:
     out pins, 3 [7]    side 0x2 ; Deassert OEn, row data with CLK low
     out pins, 3 [7]    side 0x2 ; Pulse row CLK high
     out x, 26   [7]    side 0x3 ; Pulse LATCH, get OEn pulse width
-    jmp !x row_start   side 0x3 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop_shift:
     jmp x-- pulse_loop_shift side 0x0 ; Assert OEn for x+1 cycles
 .wrap
@@ -171,11 +153,9 @@ pulse_loop_shift:
 .side_set 2
 
 .wrap_target
-row_start:
     out pins, 3 [7]    side 0x3 ; Deassert OEn, row data with CLK low
     out pins, 3 [7]    side 0x3 ; Pulse row CLK high
     out x, 26   [7]    side 0x2 ; Pulse LATCH, get OEn pulse width
-    jmp !x row_start   side 0x2 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop_shift_inv:
     jmp x-- pulse_loop_shift_inv side 0x1 ; Assert OEn for x+1 cycles
 .wrap
@@ -185,13 +165,11 @@ pulse_loop_shift_inv:
 .side_set 2
 
 .wrap_target
-row_start:
     out pins, 3 [7]    side 0x2 ; Deassert OEn, row data with CLK low
     out pins, 3 [7]    side 0x2 ; Pulse row CLK high
     out x, 26   [7]    side 0x3 ; Pulse LATCH, get OEn pulse width
     nop         [7]    side 0x3 ; Extend LATCH (2/3)
     nop         [7]    side 0x3 ; Extend LATCH (3/3)
-    jmp !x row_start   side 0x3 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop_shift_dp:
     jmp x-- pulse_loop_shift_dp side 0x0 ; Assert OEn for x+1 cycles
 .wrap
@@ -201,13 +179,11 @@ pulse_loop_shift_dp:
 .side_set 2
 
 .wrap_target
-row_start:
     out pins, 3 [7]    side 0x3 ; Deassert OEn, row data with CLK low
     out pins, 3 [7]    side 0x3 ; Pulse row CLK high
     out x, 26   [7]    side 0x2 ; Pulse LATCH, get OEn pulse width
     nop         [7]    side 0x2 ; Extend LATCH (2/3)
     nop         [7]    side 0x2 ; Extend LATCH (3/3)
-    jmp !x row_start   side 0x2 ; Width 0: no OEn pulse, the plane stays dark
 pulse_loop_shift_dp_inv:
     jmp x-- pulse_loop_shift_dp_inv side 0x1 ; Assert OEn for x+1 cycles
 .wrap

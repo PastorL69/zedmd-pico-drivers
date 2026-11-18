@@ -87,33 +87,31 @@ This option does not change the latch pulse width itself. It only reduces the vi
 
 ### `HUB75_MIN_OE_NS`
 
-`HUB75_MIN_OE_NS` is the shortest OE pulse, in ns, that a bit plane may use.
+`HUB75_MIN_OE_NS` is the shortest OE pulse, in ns, that should carry pixel data.
 
-- default: `100`
-- effect: bit planes whose OE pulse would be shorter stay dark, and colours are rounded to the lowest bit plane that is still shown
+- default: `60`
+- effect: the gamma LUT rounds colours so that bit planes with a shorter OE pulse carry no pixel data
 - use it when: dim pixels change brightness when bright pixels in the same row change, mostly at low brightness
-- `0` shows every bit plane, as before
+- `0` uses every bit plane, as before
 
 The OE pulse of the lowest bit planes is only a few dozen ns long at low brightness. That is not much longer than the column drivers take to switch on, and the switch-on time depends on how many LEDs of the row are lit. Dim pixels get most of their light from these short pulses, so they change brightness with the rest of their row.
 
-The dark planes keep their timing, so the refresh rate and the overall brightness stay the same. The cost is the darkest shades: at a low brightness setting the first visible step is larger.
+Only the gamma LUT changes. The scan, its timing and the PIO programs stay the same: the empty planes are still shifted and pulsed, but light nothing. The refresh rate and the overall brightness therefore stay the same. The cost is the darkest shades: at a low brightness setting the first visible step is larger.
 
-Planes that stay dark at a `266 MHz` system clock with the default of `100 ns`:
+Empty planes at a `266 MHz` system clock with the default of `60 ns`, for brightness 1 to 10:
 
-| Panel | Row-SM clock | Brightness | Dark planes |
-| --- | --- | --- | --- |
-| `128x32` | `125 MHz` | 2 | 3 |
-| `128x32` | `125 MHz` | 6 | 2 |
-| `192x64` (XL) | `187.5 MHz` | 5 | 2 |
-| `256x64` (HD) | `250 MHz` | 6 | 2 |
-| `192x64` / `256x64` | | 1 | 5 |
+| Panel | Row-SM clock | Empty planes |
+| --- | --- | --- |
+| `128x32` | `125 MHz` | 3 3 2 2 2 1 1 1 1 1 |
+| `192x64` (XL) | `187.5 MHz` | 4 3 2 2 2 1 1 1 1 1 |
+| `256x64` (HD) | `250 MHz` | 4 3 3 2 2 2 1 1 1 1 |
 
-The value can also be changed at runtime through `Hub75::min_oe_ns`. Changes of `min_oe_ns` and `brightness` are applied at the next draw call.
+The value can also be changed at runtime through `Hub75::min_oe_ns`. Changes of `min_oe_ns` and `brightness` apply to the next draw call; pixels drawn before keep their old rounding.
 
 Example:
 
 ```cpp
-#define HUB75_MIN_OE_NS 60
+#define HUB75_MIN_OE_NS 80
 #include "hub75.hpp"
 ```
 
