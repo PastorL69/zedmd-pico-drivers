@@ -96,7 +96,7 @@
 // the lowest plane that is shown. This costs the darkest shades at low
 // brightness. 0 shows every plane. Can be changed at runtime, see min_oe_ns.
 #ifndef HUB75_MIN_OE_NS
-#define HUB75_MIN_OE_NS 100
+#define HUB75_MIN_OE_NS 50
 #endif
 
 namespace pimoroni {
