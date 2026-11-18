@@ -85,6 +85,38 @@ Example:
 
 This option does not change the latch pulse width itself. It only reduces the visible OE time around latching.
 
+### `HUB75_MIN_OE_NS`
+
+`HUB75_MIN_OE_NS` is the shortest OE pulse, in ns, that a bit plane may use.
+
+- default: `100`
+- effect: bit planes whose OE pulse would be shorter stay dark, and colours are rounded to the lowest bit plane that is still shown
+- use it when: dim pixels change brightness when bright pixels in the same row change, mostly at low brightness
+- `0` shows every bit plane, as before
+
+The OE pulse of the lowest bit planes is only a few dozen ns long at low brightness. That is not much longer than the column drivers take to switch on, and the switch-on time depends on how many LEDs of the row are lit. Dim pixels get most of their light from these short pulses, so they change brightness with the rest of their row.
+
+The dark planes keep their timing, so the refresh rate and the overall brightness stay the same. The cost is the darkest shades: at a low brightness setting the first visible step is larger.
+
+Planes that stay dark at a `266 MHz` system clock with the default of `100 ns`:
+
+| Panel | Row-SM clock | Brightness | Dark planes |
+| --- | --- | --- | --- |
+| `128x32` | `125 MHz` | 2 | 3 |
+| `128x32` | `125 MHz` | 6 | 2 |
+| `192x64` (XL) | `187.5 MHz` | 5 | 2 |
+| `256x64` (HD) | `250 MHz` | 6 | 2 |
+| `192x64` / `256x64` | | 1 | 5 |
+
+The value can also be changed at runtime through `Hub75::min_oe_ns`. Changes of `min_oe_ns` and `brightness` are applied at the next draw call.
+
+Example:
+
+```cpp
+#define HUB75_MIN_OE_NS 60
+#include "hub75.hpp"
+```
+
 ### DP3246 Latch Timing
 
 The `DP3246` runtime path uses a fixed latch-high extension in the row PIO program: one latch instruction plus two `nop [7]` instructions.

@@ -214,12 +214,25 @@ Hub75::Hub75(uint width, uint height, Pixel *buffer, bool inverted_stb, COLOR_OR
 
     }
 
-    // We want to load these into RAM as they are used in hot loops. 
+    // Builds the gamma LUTs for the current brightness and clock; start()
+    // updates them for the clock it runs with.
+    update_dark_planes();
+}
+
+void Hub75::build_luts(uint round_bits) {
+    // We want to load these into RAM as they are used in hot loops.
     // Consumes about 3KB, though the processing improvement makes up for it.
+    const uint32_t max_level = (1u << BIT_DEPTH) - 1u;
     for (uint i = 0; i < 256; i++) {
-        s_lut_r[i] = (uint32_t)lut_table[i] << r_shift;
-        s_lut_g[i] = (uint32_t)lut_table[i] << g_shift;
-        s_lut_b[i] = (uint32_t)lut_table[i] << b_shift;
+        uint32_t level = lut_table[i];
+        if (round_bits > 0) {
+            // The lowest round_bits planes stay dark: round to the nearest
+            // level that the shown planes can display.
+            level = std::min(max_level, ((level + (1u << (round_bits - 1))) >> round_bits) << round_bits);
+        }
+        s_lut_r[i] = level << r_shift;
+        s_lut_g[i] = level << g_shift;
+        s_lut_b[i] = level << b_shift;
     }
     for (uint i = 0; i < 32; i++) {
         const uint8_t v8 = (i << 3) | (i >> 2);
@@ -228,6 +241,22 @@ Hub75::Hub75(uint width, uint height, Pixel *buffer, bool inverted_stb, COLOR_OR
     }
     for (uint i = 0; i < 64; i++) {
         s_lut565_g[i] = s_lut_g[(i << 2) | (i >> 4)];
+    }
+}
+
+void Hub75::update_dark_planes() {
+    // The row state machine runs at clk_sys / panel_data_clkdiv().
+    const uint64_t row_hz = (uint64_t)((float)system_clock_hz() / panel_data_clkdiv(width));
+    min_oe_cycles = (uint32_t)(((uint64_t)min_oe_ns * row_hz + 999999999u) / 1000000000u);
+    lut_brightness = brightness;
+    lut_min_oe_ns = min_oe_ns;
+
+    // Pulses grow with the plane, so the dark planes are the lowest ones.
+    uint planes = 0;
+    while (planes < BIT_DEPTH - 1 && oe_width(planes) == 0) ++planes;
+    if (planes != dark_planes) {
+        dark_planes = planes;
+        build_luts(planes);
     }
 }
 
@@ -247,12 +276,14 @@ void Hub75::set_color(uint x, uint y, Pixel c) {
 
 void Hub75::set_pixel(uint x, uint y, uint8_t r, uint8_t g, uint8_t b) {
     if(x >= width || y >= height) return;
+    sync_dark_planes();
     prepare_partial_draw();
     draw_back_buffer[buffer_offset(x, y)] = rgb888_to_pixel(r, g, b);
 }
 
 void Hub75::draw_rgb565(uint x, uint y, uint w, uint h, const uint8_t *src) {
     if (x >= width || y >= height) return;
+    sync_dark_planes();
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
     if (x == 0 && y == 0 && cw == width && ch == height) {
@@ -267,6 +298,7 @@ void Hub75::draw_rgb565(uint x, uint y, uint w, uint h, const uint8_t *src) {
 
 void Hub75::draw_rgb888(uint x, uint y, uint w, uint h, const uint8_t *src) {
     if (x >= width || y >= height) return;
+    sync_dark_planes();
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
     if (x == 0 && y == 0 && cw == width && ch == height) {
@@ -285,6 +317,7 @@ void Hub75::draw_rgb888(uint x, uint y, uint w, uint h, const uint8_t *src) {
 
 void Hub75::fill_rect(uint x, uint y, uint w, uint h, uint8_t r, uint8_t g, uint8_t b) {
     if (x >= width || y >= height) return;
+    sync_dark_planes();
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
     if (x == 0 && y == 0 && cw == width && ch == height) {
@@ -631,6 +664,8 @@ void Hub75::start(irq_handler_t handler) {
 
         uint latch_cycles = latch_cycles_for_system_clock(width);
         shiftreg_delay = shiftreg_delay_cycles();
+        // The clock may have changed since the constructor.
+        update_dark_planes();
 
         if (uses_gpio_serial_decoder(*this)) {
             // GPIO-stepped serial row decoders keep row selection outside the row PIO program.
@@ -1065,18 +1100,26 @@ void __not_in_flash_func(Hub75::dma_complete)() {
     }
 }
 
-uint32_t __not_in_flash_func(Hub75::encode_row_payload)(uint row, uint bit) const {
+uint32_t __not_in_flash_func(Hub75::oe_width)(uint bit) const {
 #if LOWER_BASE_BRIGHTNESS
     // New method prevents extremes and makes the overall shift more gradual.
     // The >> 1 cuts a brightness increment in half from what it was before.
-    uint32_t oe_width = ((brightness + 1) << bit) >> 1;
+    uint32_t pulse = ((brightness + 1) << bit) >> 1;
 #else
-    uint32_t oe_width = brightness << bit;
+    uint32_t pulse = brightness << bit;
 #endif
 #if HUB75_LATCH_BLANKING > 0
     const uint32_t blank = (uint32_t)HUB75_LATCH_BLANKING * 2u;
-    oe_width = oe_width > blank ? oe_width - blank : 1u;
+    pulse = pulse > blank ? pulse - blank : 1u;
 #endif
+    // OEn stays on for pulse + 1 cycles. A pulse shorter than min_oe_cycles
+    // keeps the plane dark (the row programs skip OEn for 0).
+    if (pulse + 1u < min_oe_cycles) return 0;
+    return pulse;
+}
+
+uint32_t __not_in_flash_func(Hub75::encode_row_payload)(uint row, uint bit) const {
+    const uint32_t oe_width = this->oe_width(bit);
 
     if (line_decoder == LINE_DECODER_TYPE595) {
         uint32_t row_data = row == 0 ? 1u : 0u;
@@ -1107,6 +1150,7 @@ uint __not_in_flash_func(Hub75::end_of_row_dummy_pixels)() const {
 
 void Hub75::copy_to_back_buffer(void *data, size_t len, int start_x, int start_y, int g_width, int g_height) {
     uint8_t *p = (uint8_t *)data;
+    sync_dark_planes();
     prepare_partial_draw();
 
     if(g_width == int32_t(width / 2) && g_height == int32_t(height * 2)) {

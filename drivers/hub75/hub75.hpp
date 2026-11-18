@@ -88,6 +88,17 @@
 #define HUB75_SHIFTREG_DELAY_CYCLES 170
 #endif
 
+// Shortest OEn pulse in ns that a bit plane may use. A pulse of a few dozen ns
+// is not much longer than the column drivers take to switch on, and that time
+// depends on how many LEDs of the row are lit: dim pixels then change
+// brightness when bright pixels in the same row change. Bit planes whose pulse
+// would be shorter stay dark, with unchanged timing, and colours are rounded to
+// the lowest plane that is shown. This costs the darkest shades at low
+// brightness. 0 shows every plane. Can be changed at runtime, see min_oe_ns.
+#ifndef HUB75_MIN_OE_NS
+#define HUB75_MIN_OE_NS 100
+#endif
+
 namespace pimoroni {
 const uint DATA_BASE_PIN = HUB75_R0;
 const uint DATA_N_PINS = 6;
@@ -210,6 +221,17 @@ class Hub75 {
     // Setup/hold delay for GPIO-stepped row decoders, cached by start().
     uint32_t shiftreg_delay = 8;
 
+    // Shortest OEn pulse in ns, see HUB75_MIN_OE_NS. A change of this or of
+    // brightness takes effect at the next draw call.
+    uint min_oe_ns = HUB75_MIN_OE_NS;
+    // min_oe_ns in row state machine cycles, read by the refresh ISR.
+    volatile uint32_t min_oe_cycles = 0;
+    // Number of low bit planes that stay dark; the gamma LUT rounds them away.
+    // Built for lut_brightness and lut_min_oe_ns.
+    uint dark_planes = ~0u;
+    uint lut_brightness = ~0u;
+    uint lut_min_oe_ns = ~0u;
+
     // Top half of display - 16 rows on a 32x32 panel
     unsigned int pin_r0 = HUB75_R0;
     unsigned int pin_g0 = HUB75_G0;
@@ -288,6 +310,15 @@ class Hub75 {
     void stop(irq_handler_t handler);
     void dma_complete();
     uint32_t encode_row_payload(uint row, uint bit) const;
+    // OEn pulse width - 1 of a bit plane; 0 keeps the plane dark.
+    uint32_t oe_width(uint bit) const;
+    // Applies changes of brightness or min_oe_ns to the dark planes and the
+    // gamma LUT. Called by the drawing functions.
+    inline void sync_dark_planes() {
+        if (__builtin_expect(brightness != lut_brightness || min_oe_ns != lut_min_oe_ns, 0)) update_dark_planes();
+    }
+    void update_dark_planes();
+    void build_luts(uint round_bits);
     int buffer_offset(uint x, uint y) const;
     uint panel_width() const;
     Pixel *row_buffer_ptr(uint row, uint phase) const;
