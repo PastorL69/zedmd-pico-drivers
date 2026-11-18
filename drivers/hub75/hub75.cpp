@@ -217,10 +217,12 @@ Hub75::Hub75(uint width, uint height, Pixel *buffer, bool inverted_stb, COLOR_OR
     update_dark_planes();
 }
 
-void Hub75::update_dark_planes() {
-    lut_brightness = brightness;
-    lut_min_oe_ns = min_oe_ns;
+void Hub75::set_brightness(uint value) {
+    brightness = value;
+    update_dark_planes();
+}
 
+void Hub75::update_dark_planes() {
     // Count the low bit planes whose OEn pulse is shorter than min_oe_ns. The
     // row state machine runs at clk_sys / panel_data_clkdiv() and keeps OEn on
     // for the width that encode_row_payload() sends + 1 cycles.
@@ -276,7 +278,6 @@ void Hub75::set_pixel(uint x, uint y, uint8_t r, uint8_t g, uint8_t b) {
 
 void Hub75::draw_rgb565(uint x, uint y, uint w, uint h, const uint8_t *src) {
     if (x >= width || y >= height) return;
-    sync_dark_planes();
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
     if (x == 0 && y == 0 && cw == width && ch == height) {
@@ -291,7 +292,6 @@ void Hub75::draw_rgb565(uint x, uint y, uint w, uint h, const uint8_t *src) {
 
 void Hub75::draw_rgb888(uint x, uint y, uint w, uint h, const uint8_t *src) {
     if (x >= width || y >= height) return;
-    sync_dark_planes();
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
     if (x == 0 && y == 0 && cw == width && ch == height) {
@@ -310,7 +310,6 @@ void Hub75::draw_rgb888(uint x, uint y, uint w, uint h, const uint8_t *src) {
 
 void Hub75::fill_rect(uint x, uint y, uint w, uint h, uint8_t r, uint8_t g, uint8_t b) {
     if (x >= width || y >= height) return;
-    sync_dark_planes();
     const uint cw = std::min(w, width - x);
     const uint ch = std::min(h, height - y);
     if (x == 0 && y == 0 && cw == width && ch == height) {
@@ -333,9 +332,6 @@ void Hub75::begin_frame() {
 }
 
 void Hub75::flip() {
-    // Once per frame: frames drawn with set_pixel() pick up a brightness
-    // change from the next frame on.
-    sync_dark_planes();
     // Without a second buffer, or with nothing drawn since the last flip,
     // there is nothing to swap.
     if (back_buffer2 == nullptr || draw_stale) return;
@@ -952,7 +948,6 @@ void Hub75::stop(irq_handler_t handler) {
 }
 
 void Hub75::render() {
-    sync_dark_planes();
     // After flip() without further drawing the pending swap already shows the
     // latest frame, and the draw buffer holds older content.
     if (back_buffer2 != nullptr && !draw_stale) {
@@ -1139,7 +1134,6 @@ uint __not_in_flash_func(Hub75::end_of_row_dummy_pixels)() const {
 
 void Hub75::copy_to_back_buffer(void *data, size_t len, int start_x, int start_y, int g_width, int g_height) {
     uint8_t *p = (uint8_t *)data;
-    sync_dark_planes();
     prepare_partial_draw();
 
     if(g_width == int32_t(width / 2) && g_height == int32_t(height * 2)) {

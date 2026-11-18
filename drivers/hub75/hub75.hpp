@@ -220,14 +220,10 @@ class Hub75 {
     // Setup/hold delay for GPIO-stepped row decoders, cached by start().
     uint32_t shiftreg_delay = 8;
 
-    // See HUB75_MIN_OE_NS. Changes of this or of brightness apply from the
-    // next flip(), render() or bulk draw call; set_pixel() does not check.
+    // See HUB75_MIN_OE_NS. After changing it, call update_dark_planes().
     uint min_oe_ns = HUB75_MIN_OE_NS;
-    // Low bit planes left empty by the gamma LUT, built for lut_brightness and
-    // lut_min_oe_ns.
+    // Low bit planes left empty by the gamma LUT.
     uint dark_planes = ~0u;
-    uint lut_brightness = ~0u;
-    uint lut_min_oe_ns = ~0u;
 
     // Top half of display - 16 rows on a 32x32 panel
     unsigned int pin_r0 = HUB75_R0;
@@ -307,10 +303,11 @@ class Hub75 {
     void stop(irq_handler_t handler);
     void dma_complete();
     uint32_t encode_row_payload(uint row, uint bit) const;
-    // Rebuilds the gamma LUT when brightness or min_oe_ns changed.
-    inline void sync_dark_planes() {
-        if (__builtin_expect(brightness != lut_brightness || min_oe_ns != lut_min_oe_ns, 0)) update_dark_planes();
-    }
+    // Sets brightness and rebuilds the gamma LUT if the number of empty
+    // low bit planes changes. Use this instead of writing brightness.
+    void set_brightness(uint value);
+    // Rebuilds the gamma LUT for brightness, min_oe_ns and the clock. Called
+    // by the constructor, start() and set_brightness().
     void update_dark_planes();
     int buffer_offset(uint x, uint y) const;
     uint panel_width() const;
